@@ -296,15 +296,26 @@ public struct JSON {
     public static var null: JSON { get { return JSON(NSNull() as Any) } }
     #if os(Linux)
     internal static func stringFromNumber(_ number: NSNumber) -> String {
-    let type = CFNumberGetType(unsafeBitCast(number, to: CFNumber.self))
-    switch(type) {
-    case .float32Type:
-    return String(number.floatValue)
-    case .float64Type:
-    return String(number.doubleValue)
-    default:
-    return String(number.int64Value)
-    }
+        let type = CFNumberGetType(unsafeBitCast(number, to: CFNumber.self))
+        #if swift(>=5.3)
+        switch(type) {
+        case .float32Type:
+        return String(number.floatValue)
+        case .float64Type:
+        return String(number.doubleValue)
+        default:
+        return String(number.int64Value)
+        }
+        #else
+        switch(type) {
+        case kCFNumberFloat32Type:
+        return String(number.floatValue)
+        case kCFNumberFloat64Type:
+        return String(number.doubleValue)
+        default:
+        return String(number.int64Value)
+        }
+        #endif
     }
     #endif
 }
@@ -1564,6 +1575,7 @@ extension NSNumber {
         get {
             #if os(Linux)
                 let type = CFNumberGetType(unsafeBitCast(self, to: CFNumber.self))
+                #if swift(>=5.3)
                 if  type == .sInt8Type  &&
                     (self.compare(trueNumber) == ComparisonResult.orderedSame  ||
                         self.compare(falseNumber) == ComparisonResult.orderedSame){
@@ -1571,6 +1583,15 @@ extension NSNumber {
                 } else {
                     return false
                 }
+                #else
+                if  type == kCFNumberSInt8Type  &&
+                (self.compare(trueNumber) == ComparisonResult.orderedSame  ||
+                self.compare(falseNumber) == ComparisonResult.orderedSame){
+                    return true
+                } else {
+                    return false
+                }
+                #endif
             #else
                 let objCType = String(describing: self.objCType)
                 if (self.compare(trueNumber) == ComparisonResult.orderedSame && objCType == trueObjCType)
